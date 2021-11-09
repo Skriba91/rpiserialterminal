@@ -1,6 +1,7 @@
 {
     "editor.wordWrap": "on",
     "files.associations": {
-        "rpiserial.h": "c"
+        "rpiserial.h": "c",
+        "stdio.h": "c"
     }
 }

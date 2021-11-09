@@ -35,7 +35,7 @@ clean:
 else
 
 # Name of the executable file which is created
-EXEC = rpserialterminal
+EXEC = rpiserialterminal
 SRC_DIR = ./src
 BUILD_DIR = ./build
 #[ -d $(BUILD_DIR) ] || mkdir -p $(BUILD_DIR) # Creates build directory if not exists
@@ -47,28 +47,36 @@ BUILD_DIR = ./build
 
 # Find all the C and C++ files we want to compile
 # Note the single quotes around the * expressions. Make will incorrectly expand these otherwise.
-SRCS = $(shell find $(SRC_DIR) -name '*.c')
+# SRCS = $(shell find $(SRC_DIR) -name '*.c')
 
 
 CC = gcc
-CCFLAGS = -Wall -Werror -Wextra -pedantic -std=c99 -pthread
+CCFLAGS = -Wall -Werror -Wextra -pedantic -std=c99 -pthread -I/src
 
-IDIR = ./include
-IDIR_FLAGS = $(addprefix -I,$(IDIR))
+# IDIR = ./include
+# IDIR_FLAGS = $(addprefix -I,$(IDIR))
 
 
 # The final build step.
-$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
-    $(CC) $(OBJS) -o $@ $(LDFLAGS)
+#$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
+#    $(CC) $(OBJS) -o $@ $(LDFLAGS)
 
 # Build step for C source
-$(BUILD_DIR)/%.o: %.c %.h
-    mkdir -p $(dir $@)
-    $(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+#$(BUILD_DIR)/%.o: %.c %.h
+#    mkdir -p $(dir $@)
+#    $(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
+# The final build step.
+$(EXEC): rpiserialterminal.o rpiserial.o
+	$(CC) $(CCFLAGS) rpiserialterminal.o rpiserial.o -o $(EXEC)
 
+rpiserialterminal.o: rpiserialterminal.c rpiserial.o
+	$(CC) $(CFLAGS) -c rpiserialterminal.c
+
+rpiserial.o: src/rpiserial.c src/rpiserial.h
+	$(CC) $(CCFLAGS) -c src/rpiserial.c
 
 clean:
-	rm -rf $(OBJ) $(EXEC)
+	rm -rf *.o $(EXEC)
 
 endif

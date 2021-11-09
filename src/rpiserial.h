@@ -1,19 +1,41 @@
 #ifndef RPISERIAL_H
 #define RPISERIAL_H
 
+#define RXBUFFSIZE 512
+
 /**
  * @brief 
  * 
  */
-struct uartrxparams {
-    int uart_fs;
-    char buffer[500];
+struct uart_asyncbuff {
+    char buffer[RXBUFFSIZE];
     unsigned int readptr;
     unsigned int writeptr;
-    int done;
     int error;
-    int terminate;
 };
+
+struct threadparams {
+    int terminate;
+    int uart_fs;
+    struct uart_asyncbuff *rx;
+    int error;
+};
+
+/**
+ * @brief 
+ * 
+ * @param rx
+ * @param buffer
+ */
+void writebuffer(struct uart_asyncbuff *rx, unsigned char *buffer, int size);
+
+/**
+ * @brief 
+ * 
+ * @param rx 
+ * @param buffer 
+ */
+int readbuffer(struct uart_asyncbuff *rx, unsigned  char *buffer);
 
 /**
  * @brief Configure the UART
@@ -32,6 +54,7 @@ struct rpiserial_conf {
     unsigned int stopbits;
     char parity[5];
     char flowcontrol[5];
+    int error;
 };
 
 //Unix specific code
@@ -96,7 +119,7 @@ int getUartstream(struct rpiserial_conf *conf);
  * @param conf 
  * @return unsigned int 
  */
-unsigned int startsrtial(struct rpiserial_conf *conf);
+struct threadparams startserial(struct rpiserial_conf *conf);
 
 
 
