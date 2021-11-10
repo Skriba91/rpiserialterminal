@@ -1,0 +1,3 @@
+void *readstdi(void *arg) {
+    
+}

@@ -4,6 +4,7 @@
 #include <time.h>
 
 #include "src/rpiserial.h"
+#include "src/buffers.h"
 
 struct rpiserial_conf initparams(int argc, char *argv[]);
 
@@ -20,13 +21,11 @@ int main(int argc, char *argv[]) {
     if(config.error) {
         return 1;
     }
-    struct uart_asyncbuff buff;
+    struct asyncbuff buff;
+    initbuffer(&buff, 512);
     struct uart_threadparams uartreadparams;
     uartreadparams = startserial(&config);
     uartreadparams.rx = &buff;
-    uartreadparams.rx->readptr = 0;
-    uartreadparams.rx->writeptr = 0;
-    uartreadparams.rx->error = 0;
     pthread_t readuart_thread;
     char c[5] = "test\n";
     //pthread_t readstdin_thread;

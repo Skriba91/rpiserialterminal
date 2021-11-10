@@ -67,14 +67,17 @@ CCFLAGS = -Wall -Werror -Wextra -pedantic -std=c99 -pthread -I/src
 #    $(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 # The final build step.
-$(EXEC): rpiserialterminal.o rpiserial.o
-	$(CC) $(CCFLAGS) rpiserialterminal.o rpiserial.o -o $(EXEC)
+$(EXEC): rpiserialterminal.o rpiserial.o buffers.o
+	$(CC) $(CCFLAGS) rpiserialterminal.o rpiserial.o buffers.o -o $(EXEC)
 
 rpiserialterminal.o: rpiserialterminal.c rpiserial.o
 	$(CC) $(CFLAGS) -c rpiserialterminal.c
 
-rpiserial.o: src/rpiserial.c src/rpiserial.h
+rpiserial.o: src/rpiserial.c src/rpiserial.h buffers.o
 	$(CC) $(CCFLAGS) -c src/rpiserial.c
+
+buffers.o: src/buffers.c src/buffers.h
+	$(CC) $(CCFLAGS) -c src/buffers.c
 
 clean:
 	rm -rf *.o $(EXEC)

@@ -9,52 +9,7 @@
 #include <pthread.h>    //Multithreading
 
 #include "rpiserial.h"
-
-/**
- * @brief Canculates the data size between the read and the wqrite pointer
- * Calculates the data size which which sould be read from the buffer.
- * 
- * @param rx The FIFO buffer
- * @return unsigned int The size of the data which should be read.
- */
-unsigned int getreadsize(struct uart_asyncbuff *rx) {
-    //Reading the read and write ponter values from the struct
-    unsigned int wrprt = rx->writeptr;
-    unsigned int rptr = rx->readptr; 
-    //Calculating the absolute value of the difference between the read and write pointer
-    if(wrprt > rptr) {
-        //If the write pointer is bigger than the read pointer, the size is the difference
-        return wrprt - rptr;
-    } else {
-        //If the write pointer is smaller than the read pointer, the size is the modulo RXBUFFSIZE of the sum of the read and write pointer
-        return (wrprt + rptr)%RXBUFFSIZE;
-    }
-}
-
-void writebuffer(struct uart_asyncbuff *rx, unsigned char *buffer, int size) {
-    //The caller function is responsible to check if the buffers are not NULL and the size is not 0
-    int i;
-    for(i = 0; i < size; i++) {
-        //Reading data from the buffer
-        rx->buffer[(i+rx->writeptr)%RXBUFFSIZE] = buffer[i];
-    }
-    rx->writeptr = (i+rx->writeptr)%RXBUFFSIZE;
-    //After writing data the write pointer reached the read pointer, data loss is possible
-    if(rx->writeptr == rx->readptr) {
-        rx->error = 1;
-    }
-}
-
-int readbuffer(struct uart_asyncbuff *rx, unsigned char *buffer) {
-    unsigned int i;
-    unsigned int size = getreadsize(rx);    //Calculating the numbers of bytes which should be read
-    for(i = 0; i < size; i++) {
-        buffer[i] = rx->buffer[(i+rx->readptr)%RXBUFFSIZE];
-    }
-    //Setting new value for the read pointer
-    rx->readptr = (i+rx->readptr)%RXBUFFSIZE;
-    return i;
-}
+#include "buffers.h"
 
 void *readuart_async(void *arg) {
     //Reading parameters form function argument
