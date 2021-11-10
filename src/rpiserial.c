@@ -10,105 +10,99 @@
 
 #include "rpiserial.h"
 
+/**
+ * @brief Canculates the data size between the read and the wqrite pointer
+ * Calculates the data size which which sould be read from the buffer.
+ * 
+ * @param rx The FIFO buffer
+ * @return unsigned int The size of the data which should be read.
+ */
 unsigned int getreadsize(struct uart_asyncbuff *rx) {
+    //Reading the read and write ponter values from the struct
     unsigned int wrprt = rx->writeptr;
-    if(wrprt > rx->readptr) {
-        return wrprt - rx->readptr;
+    unsigned int rptr = rx->readptr; 
+    //Calculating the absolute value of the difference between the read and write pointer
+    if(wrprt > rptr) {
+        //If the write pointer is bigger than the read pointer, the size is the difference
+        return wrprt - rptr;
     } else {
-        return (wrprt +  rx->readptr)%RXBUFFSIZE;
+        //If the write pointer is smaller than the read pointer, the size is the modulo RXBUFFSIZE of the sum of the read and write pointer
+        return (wrprt + rptr)%RXBUFFSIZE;
     }
 }
 
 void writebuffer(struct uart_asyncbuff *rx, unsigned char *buffer, int size) {
+    //The caller function is responsible to check if the buffers are not NULL and the size is not 0
     int i;
-    //TODO: check if buffer is null
-    //TODO: check if size is 0
-    //TODO: handle write pointer overflow --> define buffer size
     for(i = 0; i < size; i++) {
+        //Reading data from the buffer
         rx->buffer[(i+rx->writeptr)%RXBUFFSIZE] = buffer[i];
     }
-    printf("New size: %d\n" ,(i+rx->writeptr)%RXBUFFSIZE);
     rx->writeptr = (i+rx->writeptr)%RXBUFFSIZE;
+    //After writing data the write pointer reached the read pointer, data loss is possible
+    if(rx->writeptr == rx->readptr) {
+        rx->error = 1;
+    }
 }
 
 int readbuffer(struct uart_asyncbuff *rx, unsigned char *buffer) {
     unsigned int i;
-    unsigned int size = getreadsize(rx);
-    printf("Size: %d\n", size);
+    unsigned int size = getreadsize(rx);    //Calculating the numbers of bytes which should be read
     for(i = 0; i < size; i++) {
-        printf("point: %d, char: %d\n", (i+rx->readptr)%RXBUFFSIZE, rx->buffer[(i+rx->readptr)%RXBUFFSIZE]);
         buffer[i] = rx->buffer[(i+rx->readptr)%RXBUFFSIZE];
     }
+    //Setting new value for the read pointer
     rx->readptr = (i+rx->readptr)%RXBUFFSIZE;
     return i;
 }
 
-void *readstdin(void *arg);
-
-void writestdout(char *buffer, int size);
-
-void *readuart(void *arg) {
-    struct threadparams *param = (struct threadparams *)arg;
+void *readuart_async(void *arg) {
+    //Reading parameters form function argument
+    struct uart_threadparams *param = (struct uart_threadparams *)arg;
+    //Filestream, buffer to store in, number of bytes to read (max)
+    unsigned char rx_buffer[256];
+    //Thread runs until the thread is terminated with setting the thread parameter to 1
     while(param->terminate != 1) {
-        if (param->uart_fs != -1)
+        //TODO: Implement polling with 1 second timeout
+        int rx_length = read(param->uart_fs, (void*)rx_buffer, 256);		
+        if (rx_length < 0)
         {
-
-            //Filestream, buffer to store in, number of bytes to read (max)
-            unsigned char rx_buffer[256];
-            int rx_length = read(param->uart_fs, (void*)rx_buffer, 256);		
-            if (rx_length < 0)
-            {
-                //printf("No bytes received: %d\n", rx_length);
-            }
-            else if (rx_length == 0)
-            {
-                //No data waiting
-            }
-            else
-            {
-                //Bytes received
-                printf("Char: %d\n", rx_buffer[0]);
-                printf("Bytes received: %d\n", rx_length);
-                writebuffer(param->rx, rx_buffer, rx_length);
-            }
+            //printf("No bytes received: %d\n", rx_length);
+        }
+        else if (rx_length == 0)
+        {
+            //No data waiting
         }
         else
         {
-            param->error = -1;
-            return NULL;
+            //Bytes received writing to FIFO buffer
+            writebuffer(param->rx, rx_buffer, rx_length);
         }
     }
+    //Terminating thread
     pthread_exit(NULL);
 }
 
-void writeuart(int fd, char *buffer, int len) {
-    if (fd != -1) {	//Filestream, bytes to write, number of bytes to write
-        int count = write(fd, &buffer, len);
-        if (count < 0)
-        {
-            printf("UART TX error\n");
-        }
-    }
-    else {
-        printf("UART TX error\n");
-    }
+int writeuart_sync(int fd, char *buffer, int len) {
+    //Writes data with len length to the UART from buffer
+    int count = write(fd, &buffer, len);
+    //Returns the number of bytes written, if count not equal to len, that indicates error
+    return count;
 }
 
 speed_t getBaudrate(unsigned int baudrate) {
+    speed_t brate;   //Variable for return value
     switch(baudrate) {
-        case 9600:
-            return B9600;
-        case 19200:
-            return B19200;
-        case 38400:
-            return B38400;
-        case 57600:
-            return B57600;
-        case 115200:
-            return B115200;
-        default:
-            return B9600;
+        case 4800: brate = B4800; break;
+        case 9600: brate = B9600; break;
+        case 19200: brate = B19200; break;
+        case 38400: brate = B38400; break;
+        case 57600: brate = B57600; break;
+        case 115200: brate = B115200; break;
+        //TODO: Add more baudrates
+        default: brate = B9600; break;
     }
+    return brate;
 }
 
 int getUartstream(struct rpiserial_conf *conf) {
@@ -120,11 +114,13 @@ int getUartstream(struct rpiserial_conf *conf) {
 	uart0_filestream = open(conf->device, O_RDWR | O_NOCTTY | O_NDELAY);
 	if (uart0_filestream == -1)
 	{
-		//ERROR - CAN'T OPEN SERIAL PORT
-		printf("Error - Unable to open UART."
-				"Ensure it is not in use by another application\n");
+		//ERROR - CAN'T OPEN SERIAL PORT, Ensure it is not in use by another application
+		//TODO: Implement error handling and error logging
+        conf->error = 1;
+        return uart0_filestream;
 	}
     baudrate = getBaudrate(conf->baud);
+    //TODO: Implement start bits, stop bits, parity, flow control
 	tcgetattr(uart0_filestream, &options);
 	options.c_cflag = baudrate | CS8 | CLOCAL | CREAD;		//<Set baud rate
 	options.c_iflag = IGNPAR;
@@ -135,10 +131,10 @@ int getUartstream(struct rpiserial_conf *conf) {
     return uart0_filestream;
 }
 
-struct threadparams startserial(struct rpiserial_conf *conf) {
-    struct threadparams uartreadparams;
+struct uart_threadparams startserial(struct rpiserial_conf *conf) {
+    struct uart_threadparams uartreadparams;
     int uart0_filestream = getUartstream(conf);
-    uartreadparams.uart_fs = uart0_filestream;
+    uartreadparams.uart_fs = uart0_filestream;  //Setting the UART filestream to the thread parameter
     uartreadparams.terminate = 0;
     return uartreadparams;
 }

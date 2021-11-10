@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     struct uart_asyncbuff buff;
-    struct threadparams uartreadparams;
+    struct uart_threadparams uartreadparams;
     uartreadparams = startserial(&config);
     uartreadparams.rx = &buff;
     uartreadparams.rx->readptr = 0;
@@ -29,9 +29,8 @@ int main(int argc, char *argv[]) {
     uartreadparams.rx->error = 0;
     pthread_t readuart_thread;
     char c[5] = "test\n";
-    printf("%d\n", uartreadparams.rx->readptr);
     //pthread_t readstdin_thread;
-    pthread_create(&readuart_thread, NULL, readuart, (void *)&uartreadparams);
+    pthread_create(&readuart_thread, NULL, readuart_async, (void *)&uartreadparams);
     //pthread_create(&readstdin_thread, NULL, readstdin, NULL);
     for(unsigned int i = 0; i < 5; i++) {
         write(uartreadparams.uart_fs,&c,5);
