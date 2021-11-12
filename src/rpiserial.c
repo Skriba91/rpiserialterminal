@@ -6,6 +6,8 @@
 #include <fcntl.h>      //Used for UART
 #include <termios.h>    //Used for UART
 
+#include <poll.h>
+
 #include <pthread.h>    //Multithreading
 
 #include "rpiserial.h"
@@ -16,22 +18,27 @@ void *readuart_async(void *arg) {
     struct uart_threadparams *param = (struct uart_threadparams *)arg;
     //Filestream, buffer to store in, number of bytes to read (max)
     unsigned char rx_buffer[256];
+    struct pollfd fds[1];
+    fds[0].fd = param->uart_fs;
+    fds[0].events = POLLIN;
     //Thread runs until the thread is terminated with setting the thread parameter to 1
     while(param->terminate != 1) {
-        //TODO: Implement polling with 1 second timeout
-        int rx_length = read(param->uart_fs, (void*)rx_buffer, 256);		
-        if (rx_length < 0)
-        {
-            //printf("No bytes received: %d\n", rx_length);
-        }
-        else if (rx_length == 0)
-        {
-            //No data waiting
-        }
-        else
-        {
-            //Bytes received writing to FIFO buffer
-            writebuffer(param->rx, rx_buffer, rx_length);
+        poll(fds, 1, 1000);
+        if(fds[0].revents & POLLIN) {
+            int rx_length = read(param->uart_fs, (void*)rx_buffer, 256);		
+            if (rx_length < 0)
+            {
+                //printf("No bytes received: %d\n", rx_length);
+            }
+            else if (rx_length == 0)
+            {
+                //No data waiting
+            }
+            else
+            {
+                //Bytes received writing to FIFO buffer
+                writebuffer(param->rx, rx_buffer, rx_length);
+            }
         }
     }
     //Terminating thread
@@ -92,6 +99,11 @@ struct uart_threadparams startserial(struct rpiserial_conf *conf) {
     uartreadparams.uart_fs = uart0_filestream;  //Setting the UART filestream to the thread parameter
     uartreadparams.terminate = 0;
     return uartreadparams;
+}
+
+void stopserial(struct uart_threadparams *params) {
+    close(params->uart_fs); //Closing the serial port
+    params->uart_fs = -1;        //Setting the filestream to -1 indicating that the serial port is closed
 }
 
 

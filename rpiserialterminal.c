@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
     printf("Read pointer: %d\n", uartreadparams.rx->readptr);
     uartreadparams.terminate = 1;
     pthread_join(readuart_thread, NULL);
+    stopserial(&uartreadparams);
     return 0;
 }
 

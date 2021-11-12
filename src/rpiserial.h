@@ -51,7 +51,7 @@ void *readuart_async(void *arg);
  * program execution.
  * @param arg Shall be uart_threadparams struct.
  */
-void readuart_sync(void *arg);
+void readuart_sync(void *arg); //TODO: Implement
 
 /**
  * @brief Writes the UART device in a new thread.
@@ -98,6 +98,14 @@ int getUartstream(struct rpiserial_conf *conf);
  * @return struct threadparams The initialized threadparams object which contains the UART file descriptor.
  */
 struct uart_threadparams startserial(struct rpiserial_conf *conf);
+
+/**
+ * @brief Releases the serial port
+ * 
+ * @param params Thread parameter of the serial port which contains the file
+ * descriptor of the serial port.
+ */
+void stopserial(struct uart_threadparams *params); //TODO: implement
 
 
 
